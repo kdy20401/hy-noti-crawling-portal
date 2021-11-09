@@ -12,7 +12,9 @@ def connect_db(board):
         collection = client.notice.cse_notice
     elif board == 'bs':
         collection = client.notice.bs_notice
-    
+    elif board == 'me':
+        collection = client.notice.me_notice
+
     collection.create_index('title', name='unique_title', unique=True)
     return client, collection
 
@@ -33,3 +35,4 @@ def truncate_db_all():
     truncate_db('portal', 300)
     truncate_db('cse', 30)
     truncate_db('bs', 30)
+    truncate_db('me', 30)

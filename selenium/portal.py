@@ -239,11 +239,6 @@ def crawl():
     driver.quit()
         
 
-# TODO
-def handle_password_change_recommendation_page():
-    pass
-
-
 def submit_selfcheck():
     for num in range(37, 43):
         driver.find_element_by_xpath('//*[@id="c{}_b"]'.format(num)).click()
@@ -276,7 +271,7 @@ def handle_covid19_selfcheck():
         handle_alert()
 
         
-def login():
+def login(is_course_registration_period):
     global driver
 
     # change language to korean
@@ -285,7 +280,8 @@ def login():
 
     # when in course registration period, course registration popup appears again
     # after changing language option
-    handle_course_registration_popup()
+    if is_course_registration_period:
+        handle_course_registration_popup()
     
     # input id and password and click login button
     identifier = sys.argv[1]
@@ -307,6 +303,9 @@ def handle_course_registration_popup():
         # pop up is visible
         if 'none' not in style:
             driver.find_element_by_xpath('//*[@id="pop_po_sugang"]/table/tbody/tr[1]/td/table/tbody/tr[1]/td[2]').click()
+            return True
+        else:
+            return False
 
             
 def handle_covid19_page():
@@ -326,10 +325,9 @@ def enter_portal_notice():
     driver.get('https://portal.hanyang.ac.kr/sso/lgin.do')
     
     handle_covid19_page()
-    handle_course_registration_popup() # only for course registration period
-    login()
+    ret = handle_course_registration_popup() # only for course registration period
+    login(ret)
     handle_covid19_selfcheck()
-    # TODO: handle_password_change_recommendation_page()
 
     portalNoticeUrl = 'https://portal.hanyang.ac.kr/port.do'\
         '#!UDMwODIwMCRAXiRAXmNvbW0vZ2pzaCRAXk0wMDYyNjMkQF7qs7Xsp4Ds'\
@@ -349,7 +347,7 @@ def set_chromedriver():
     options.add_argument('user-agent={}'.format(userAgent))
     options.add_argument('window-size=1920x1080')
     options.add_argument('start-maximized')
-    options.add_argument('headless')
+    # options.add_argument('headless')
     # options.add_argument('no-sandbox')
     # options.add_argument('disable-dev-shm-usage')
     
@@ -373,7 +371,8 @@ def crawl_portal_notice():
     except:
         # when exception not handled by try-except in enter_portal_notice() occurs 
         panic('enter_portal_notice')
-    
+    return
+
     # third, get notice information up to 5 pages
     try:
         crawl()
