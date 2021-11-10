@@ -12,6 +12,7 @@ from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentE
 
 # global variables
 driver = None
+# NOTE: be aware of the type of slash(/, \) according to OS
 chromeDriverPath = os.getcwd() + '/driver/chromedriver'
 downloadPath = os.getcwd() + '/download'
 userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'
@@ -46,7 +47,6 @@ def panic(func):
 
 def save_portal_notice(category, title, writer, date, content, files):
     from db import connect_db
-
     global driver
 
     client, collection = connect_db('portal')
@@ -89,7 +89,7 @@ def upload_file(title, fileNum):
         return []
     
     fileNames = set()
-    
+
     # check all files are downloaded to local
     while len(fileNames) != fileNum:
         for file in os.scandir(downloadPath):
@@ -109,7 +109,7 @@ def upload_file(title, fileNum):
             for file in os.scandir(downloadPath):
                 os.remove(file.path)
             panic('upload_file(due to ClientError)')
-        except:
+        except: # NOTE: exception is handled in this except on windows environment
             # before close program, remove files from local
             for file in os.scandir(downloadPath):
                 os.remove(file.path)
@@ -160,8 +160,8 @@ def get_notice_header(bsObj):
     year = int(arr[0])
     month = int(arr[1])
     day = int(arr[2])
-    print('[{}] {} {} {}'.format(category, title, writer, date))
 
+    print('[{}] {} {} {}'.format(category, title, writer, date))
     return category, title, writer, datetime(year, month, day)
 
 
@@ -230,7 +230,6 @@ def crawl():
             fileNames = upload_file(title, fileNum)
             # save notice information including file links to db
             save_portal_notice(category, title, writer, date, content, fileNames)
-
             # return to the page
             driver.find_element_by_xpath('//*[@id="btn_list"]').click()
             wait_until_notices_appear(5, By.CSS_SELECTOR, '#mainGrid > tbody > tr:nth-child(10)')
@@ -271,16 +270,15 @@ def handle_covid19_selfcheck():
         handle_alert()
 
         
-def login(is_course_registration_period):
+def login(isCourseRegistrationPeriod):
     global driver
 
     # change language to korean
     driver.find_element_by_xpath('//*[@id="footer"]/div/ul/li[3]/ul/li[1]/a').click()
     time.sleep(2)
 
-    # when in course registration period, course registration popup appears again
-    # after changing language option
-    if is_course_registration_period:
+    # course registration popup appears again after changing language option
+    if isCourseRegistrationPeriod:
         handle_course_registration_popup()
     
     # input id and password and click login button
@@ -321,21 +319,19 @@ def handle_covid19_page():
     
 def enter_portal_notice():
     global driver
-
-    driver.get('https://portal.hanyang.ac.kr/sso/lgin.do')
-    
-    handle_covid19_page()
-    ret = handle_course_registration_popup() # only for course registration period
-    login(ret)
-    handle_covid19_selfcheck()
-
+    portalLoginUrl = 'https://portal.hanyang.ac.kr/sso/lgin.do'
     portalNoticeUrl = 'https://portal.hanyang.ac.kr/port.do'\
         '#!UDMwODIwMCRAXiRAXmNvbW0vZ2pzaCRAXk0wMDYyNjMkQF7qs7Xsp4Ds'\
         'gqztla0kQF5NMDAzNzgxJEBeMGJlMjk1OTM2MjY0MjlkZmMzZjFiNjE4MDQ'\
         '1YmM4MTcyYjg2ODMyZGYwZDMzM2JjMGY1ZGI0NzE5OWI5MDI4YQ=='
-    # after passing all steps, access to portal notice
-    driver.get(portalNoticeUrl)
-    # wait the first page notices to be fully loaded
+
+    driver.get(portalLoginUrl)    
+    handle_covid19_page()
+    isCourseRegistrationPeriod = handle_course_registration_popup() # only for course registration period
+    login(isCourseRegistrationPeriod)
+    driver.get(portalNoticeUrl) # pass password change recommendation page
+    handle_covid19_selfcheck()
+    driver.get(portalNoticeUrl) # finally enter to portal notice
     wait_until_notices_appear(5, By.CSS_SELECTOR, '#mainGrid > tbody > tr:nth-child(10)')
     
     
@@ -371,7 +367,6 @@ def crawl_portal_notice():
     except:
         # when exception not handled by try-except in enter_portal_notice() occurs 
         panic('enter_portal_notice')
-    return
 
     # third, get notice information up to 5 pages
     try:
